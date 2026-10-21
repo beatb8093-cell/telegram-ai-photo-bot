@@ -1,29 +1,25 @@
-
 import os
 import requests
 from flask import Flask, request, jsonify
+import threading
 
 app = Flask(__name__)
 
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
 
-
 def telegram_api(method, data):
     if not TOKEN:
         return None
-
     url = f"https://api.telegram.org/bot{TOKEN}/{method}"
     try:
         return requests.post(url, json=data, timeout=20)
     except requests.RequestException:
         return None
 
-
 @app.get("/")
 def home():
     return "AI Photo Enhancer Bot is running!"
-
 
 @app.post("/telegram-webhook")
 def telegram_webhook():
@@ -61,12 +57,13 @@ def telegram_webhook():
 
     return jsonify(ok=True)
 
+def set_webhook():
+    if TOKEN and WEBHOOK_URL:
+        telegram_api("setWebhook", {
+            "url": WEBHOOK_URL.rstrip("/") + "/telegram-webhook"
+        })
 
-if TOKEN and WEBHOOK_URL:
-    telegram_api("setWebhook", {
-        "url": WEBHOOK_URL.rstrip("/") + "/telegram-webhook"
-    })
-    if __name__ == "__main__":
+if __name__ == "__main__":
+    threading.Thread(target=set_webhook).start()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
